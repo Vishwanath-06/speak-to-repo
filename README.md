@@ -41,8 +41,7 @@ The system is designed for CPU-only developer machines. Its query path uses sele
 
 ## Demo
 
-> **Demo link:** [clickhere](#https://drive.google.com/file/d/1IhZ0Ejz_SvoPlvtsfNk9qAUwPi3dUTZ3/view?usp=drive_link)
->
+> **Demo link:** [clickhere](# https://drive.google.com/file/d/1IhZ0Ejz_SvoPlvtsfNk9qAUwPi3dUTZ3/view?usp=drive_link)
 > Replace this placeholder with a YouTube, Drive, or deployed-demo URL when it is available.
 
 To run the local interactive studio, see [Running the Demo Studio](#running-the-demo-studio).
