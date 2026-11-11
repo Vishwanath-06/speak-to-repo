@@ -325,12 +325,9 @@ speak-to-repo/
 
 Contributions, bug reports, and suggestions are welcome. For substantial changes, open an issue first to discuss the proposed update. When submitting a pull request, include the motivation, the affected pipeline phase, and relevant test or benchmark output.
 
-## License
-
-No license is specified in the repository information used for this README. Add a `LICENSE` file before granting permissions for reuse or redistribution.
 
 ---
 
 <p align="center">
-  Built for CPU-native, repository-grounded engineering workflows.
+  Built for CPU-native, repository-grounded engineering workflows by V.
 </p>
