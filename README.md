@@ -61,7 +61,7 @@ To run the local interactive studio, see [Running the Demo Studio](#running-the-
 Speak-to-Repo follows a **four-phase sequential modality-swap lifecycle**. Instead of keeping every modality model active together, the system loads the subsystem needed for the current phase and releases idle worker memory after the task.
 
 <p align="center">
-  <img src="assets\Speak-to-Repo System Architecture (1).png" alt="Speak-to-Repo dark system architecture showing inputs, four processing phases, outputs, technology stack, and CPU memory constraints" width="100%">
+  <img src="assets\Speak-to-Repo System Architecture.png" alt="Speak-to-Repo dark system architecture showing inputs, four processing phases, outputs, technology stack, and CPU memory constraints" width="100%">
 </p>
 
 ### Phase 1 — AST-biased multimodal ingest
