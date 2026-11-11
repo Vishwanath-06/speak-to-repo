@@ -20,3 +20,6 @@ storage/keyframes/*.jpg
 # 3. Initialize Git and verify only clean source, scripts, and benchmark artifacts are staged
 git init
 git status
+# Generated runtime artifacts
+storage/compiled_docs/
+storage/sessions/
