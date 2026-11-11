@@ -1,0 +1,11 @@
+﻿{
+  "name": "@speak-to-repo/cordis-plugin",
+  "version": "0.1.0",
+  "description": "Cordis spatiotemporal plugin mounting Speak-to-Repo CPU workers onto DeepSeek Harness ctx.tools",
+  "type": "module",
+  "main": "./src/speak-ingest.ts",
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "workspace:*",
+    "@deepseek-ai/dsh-tools": "workspace:*"
+  }
+}

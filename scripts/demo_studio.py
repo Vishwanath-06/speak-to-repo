@@ -45,7 +45,11 @@ DEMO_MEDIA_DIR.mkdir(parents=True, exist_ok=True)
 app.mount("/keyframes", StaticFiles(directory=str(KEYFRAME_DIR)), name="keyframes")
 app.mount("/demo_media", StaticFiles(directory=str(DEMO_MEDIA_DIR)), name="demo_media")
 
-DEFAULT_REPO = str((ROOT_DIR / "deepseek-harness" / "packages" / "core").resolve())
+_dsh_core = ROOT_DIR / "deepseek-harness" / "packages" / "core"
+DEFAULT_REPO = os.environ.get(
+    "SPEAK_TO_REPO_TARGET",
+    str(_dsh_core.resolve() if _dsh_core.exists() else ROOT_DIR.resolve()),
+)
 DB_DIR = str((STORAGE_DIR / "lancedb").resolve())
 EVENT_LOG_PATH = STORAGE_DIR / "sessions" / "session_events.jsonl"
 
@@ -563,6 +567,10 @@ def compile_from_active_segments(spec: Dict[str, Any], mean_ttft: float, mean_tp
     query_embed_ms = round((time.perf_counter() - t_q0) * 1000, 1)
 
     db = lancedb.connect(DB_DIR)
+    if TABLE_NAME not in db.table_names():
+        from gemma_indexer import build_index
+        transcript_seed = str(STORAGE_DIR / "transcripts" / "test_run.jsonl")
+        build_index(DEFAULT_REPO, transcript_seed, DB_DIR, max_files=40, mrl_dim=256)
     table = db.open_table(TABLE_NAME)
     raw_hits = table.search(q_vec.tolist()).metric("cosine").limit(10).to_list()
 
