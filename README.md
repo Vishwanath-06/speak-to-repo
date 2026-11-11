@@ -12,10 +12,17 @@
 </p>
 
 <p align="center">
-  <img alt="Python 3.10–3.12" src="https://img.shields.io/badge/Python-3.10--3.12-3776AB?logo=python&logoColor=white">
-  <img alt="CPU only" src="https://img.shields.io/badge/Runtime-CPU--only-2E8B57">
-  <img alt="EmbeddingGemma 256d" src="https://img.shields.io/badge/Embeddings-256d%20MRL-7B61FF">
-  <img alt="LanceDB" src="https://img.shields.io/badge/Vector%20Store-LanceDB-orange">
+
+  <img src="https://img.shields.io/badge/ASR-Cactus%20Whistle-00A67D?style=for-the-badge" />
+  <img src="https://img.shields.io/badge/AST-Python%20AST-3776AB?style=for-the-badge&logo=python&logoColor=white" />
+  <img src="https://img.shields.io/badge/Embeddings-EmbeddingGemma--2-4285F4?style=for-the-badge&logo=google&logoColor=white" />
+
+  <br/>
+
+  <img src="https://img.shields.io/badge/Vector%20Database-LanceDB-7B61FF?style=for-the-badge" />
+  <img src="https://img.shields.io/badge/Agent%20Runtime-DeepSeek%20Harness-4D6BFE?style=for-the-badge" />
+  <img src="https://img.shields.io/badge/Architecture-Mermaid.js-FF3670?style=for-the-badge&logo=mermaid&logoColor=white" />
+
 </p>
 
 ## Overview
@@ -34,7 +41,7 @@ The system is designed for CPU-only developer machines. Its query path uses sele
 
 ## Demo
 
-> **Demo link:** [Add the hosted demo URL here](#demo-link-placeholder)
+> **Demo link:** [clickhere](#https://drive.google.com/file/d/1IhZ0Ejz_SvoPlvtsfNk9qAUwPi3dUTZ3/view?usp=drive_link)
 >
 > Replace this placeholder with a YouTube, Drive, or deployed-demo URL when it is available.
 
