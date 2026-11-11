@@ -1,113 +1,209 @@
 # Speak-to-Repo Compiler
 
-> **CPU-Native Multimodal Engineering Design Review & Codebase Compiler**  
-> Built with **`Cactus-Compute/whistle` (16.9 MB)**, **`google/embeddinggemma-2` (256d Matryoshka MRL)**, **`LanceDB`**, and **`deepseek-ai/deepseek-harness` (Cordis Kernel)**
+> **CPU-native multimodal engineering design review and codebase compiler**
+>
+> Turn recorded design reviews and live voice instructions into repository-grounded architecture diagrams, unified Git patches, and Architecture Decision Records.
 
-**Speak-to-Repo** converts recorded engineering design reviews (whiteboard slide decks + spoken discussions) and live microphone overrides into grounded repository deliverables:
-1. **Codebase Architecture & Sequence Topologies (`Mermaid.js`)** mapped to real repository modules.
-2. **Actionable Unified Git Diffs (`changes.patch`)** parameterized directly by spoken numbers and architectural rules.
-3. **Multimodal Architecture Decision Records (`ADR-compiled.md`)** linking visual slide keyframes, `80 ms` word timestamps, and `256d` cosine-matched source files.
+<p align="center">
+  <a href="#demo">Demo</a> ·
+  <a href="#architecture">Architecture</a> ·
+  <a href="#installation">Installation</a> ·
+  <a href="#benchmarks">Benchmarks</a>
+</p>
 
-Designed from the ground up for **CPU-only developer laptops (16 GB RAM)**, the compiler runs within a **sub-500 MB query memory envelope** using PyTorch submodule pruning and Windows Working-Set reclamation.
+<p align="center">
+  <img alt="Python 3.10–3.12" src="https://img.shields.io/badge/Python-3.10--3.12-3776AB?logo=python&logoColor=white">
+  <img alt="CPU only" src="https://img.shields.io/badge/Runtime-CPU--only-2E8B57">
+  <img alt="EmbeddingGemma 256d" src="https://img.shields.io/badge/Embeddings-256d%20MRL-7B61FF">
+  <img alt="LanceDB" src="https://img.shields.io/badge/Vector%20Store-LanceDB-orange">
+</p>
 
----
+## Overview
 
-## System Architecture & 4-Phase Memory Lifecycle
+**Speak-to-Repo** is an offline-first engineering assistant that connects spoken design discussions to the source code they describe. It ingests whiteboard slides, recorded audio, and a target Git repository; identifies repository symbols; indexes source and transcript segments; and uses live voice overrides to compile grounded engineering deliverables.
 
-Running ASR, multimodal vision/code encoders, and an agent runtime simultaneously on CPU typically consumes 4–8 GB of RAM. **Speak-to-Repo** uses a **Sequential Modality Swap** pattern governed by reversible `ctx.effect()` hooks on the **DeepSeek Harness (`dsh`) Cordis kernel**:
+The system is designed for CPU-only developer machines. Its query path uses selective model loading and modality pruning to stay within a measured **491.35 MB peak worker RSS** on the documented test host. The full indexing stage has a higher memory requirement and is benchmarked separately below.
 
-```mermaid
-flowchart TB
-    subgraph Phase1["Phase 1: AST-Biased Multimodal Ingest (98.4 MB Peak RSS)"]
-        A1["Target Git Repo"] -->|os.walk AST Harvester| A2["150 Domain Identifiers"]
-        A3["Design Review Slides + 16kHz Audio"] -->|Keyframes + PCM Windows| A4["Cactus Whistle (16.9 MB, 2-bit/4-bit SIMD)"]
-        A2 -->|Aho-Corasick Beam Bias + Phonetic Snap| A4
-        A4 -->|277.4 tok/s + 80ms Word Timestamps| A5["Validated Voice Gate"]
-    end
+### What it generates
 
-    subgraph Phase2["Phase 2: Matryoshka Multimodal Indexing (256d MRL)"]
-        A5 --> B1["EmbeddingGemma-2 (bfloat16 CPU)"]
-        A1 -->|Source Files (.ts, .py, .md)| B1
-        B1 -->|MRL Slicing + L2 Norm (3x Compression)| B2[("LanceDB On-Disk Vector Store")]
-    end
+| Deliverable | Description | Output |
+|---|---|---|
+| Architecture and sequence diagrams | Mermaid topologies mapped to repository modules | Mermaid `.md` content |
+| Unified Git patch | Actionable source changes derived from spoken constraints | `changes.patch` |
+| Architecture Decision Record | Design rationale grounded in slide keyframes, timestamped transcript segments, and matched source files | `ADR-compiled.md` |
 
-    subgraph Phase3["Phase 3: Pruned Query & Multi-Scenario Compiler (491.3 MB RSS)"]
-        C1["Live Mic Voice Override (2A / 2B / 2C)"] --> A5
-        A5 -->|Valid Command| C2["EmbeddingGemma-2 (Vision/Audio Towers Pruned)"]
-        A5 -.->|Unclear Audio: Hold State + 1.5s Toast| C1
-        C2 -->|237 ms Cosine Search| B2
-        B2 -->|Top-K Grounded Modules| C3["Mermaid Topology + Git Diff + ADR Compiler"]
-    end
+## Demo
 
-    subgraph Phase4["Phase 4: Cordis Event Log & Working-Set GC"]
-        C3 --> D1["Append-Only Session Log (session_events.jsonl)"]
-        D1 -->|Win32 SetProcessWorkingSetSize / ctx.effect| D2["Reclaim Idle RAM (<100 MB)"]
-    end
+> **Demo link:** [Add the hosted demo URL here](#demo-link-placeholder)
+>
+> Replace this placeholder with a YouTube, Drive, or deployed-demo URL when it is available.
+
+To run the local interactive studio, see [Running the Demo Studio](#running-the-demo-studio).
+
+## Key Features
+
+- **Multimodal review ingestion:** Processes design-review media and spoken discussion, including 16 kHz audio and slide keyframes.
+- **Repository-aware speech recognition:** Uses AST-derived identifiers to bias recognition toward real project symbols and names.
+- **Compact semantic indexing:** Embeds source files and transcript segments with `google/embeddinggemma-2` using 256-dimensional Matryoshka representations.
+- **Grounded retrieval:** Uses LanceDB to retrieve relevant repository modules for a voice instruction.
+- **Live voice overrides:** Supports preset or microphone-driven architectural changes across three compilation scenarios.
+- **Multiple engineering outputs:** Produces Mermaid topology, a unified Git patch, and a compiled ADR.
+- **Session traceability:** Appends session events to JSONL logs and supports session forking.
+- **CPU-conscious execution:** Uses selective model loading, tower pruning, subprocess cleanup, and Windows working-set reclamation.
+- **Safe voice validation:** Holds the current repository/UI state when an input is too short, noisy, or not confidently recognized.
+
+## Architecture
+
+Speak-to-Repo follows a **four-phase sequential modality-swap lifecycle**. Instead of keeping every modality model active together, the system loads the subsystem needed for the current phase and releases idle worker memory after the task.
+
+<p align="center">
+  <img src="assets\Speak-to-Repo System Architecture.png" alt="Speak-to-Repo dark system architecture showing inputs, four processing phases, outputs, technology stack, and CPU memory constraints" width="100%">
+</p>
+
+### Phase 1 — AST-biased multimodal ingest
+
+1. The AST harvester scans the target repository and collects domain identifiers and source symbols.
+2. Design-review media is prepared as slide keyframes and audio windows.
+3. Cactus Whistle performs speech recognition, using repository vocabulary to help recognize technical names.
+4. The voice-validation gate accepts a usable transcript or holds the current application state when the audio is unclear.
+
+**Primary components:** `ast_extractor.py`, `whistle_ingest.py`, Cactus Whistle, validated voice gate.
+
+### Phase 2 — Matryoshka multimodal indexing
+
+1. Repository source files and transcript segments are prepared for embedding.
+2. EmbeddingGemma-2 generates embeddings on CPU.
+3. Matryoshka Representation Learning (MRL) reduces the vectors to the configured 256-dimensional representation, followed by normalization.
+4. LanceDB stores the vectors and associated source metadata on disk.
+
+**Primary components:** `gemma_indexer.py`, EmbeddingGemma-2, LanceDB.
+
+### Phase 3 — Voice query and compilation
+
+1. An engineer speaks a live override or selects one of the supported scenarios.
+2. The validation gate checks the input before the query is processed.
+3. A pruned EmbeddingGemma-2 query path embeds the instruction and searches the LanceDB index.
+4. Retrieved source context is passed to the compiler to generate the updated Mermaid topology, Git patch, and ADR.
+
+**Primary components:** Live Studio, pruned EmbeddingGemma-2, LanceDB retrieval, `repo_compiler.py`.
+
+### Phase 4 — Session logging and memory cleanup
+
+1. Session actions are appended to `session_events.jsonl`.
+2. Cordis `ctx.effect()` hooks manage worker lifecycle and cleanup.
+3. On Windows, working-set reclamation can release idle process memory after a task.
+
+**Primary components:** `cordis_session_runner.py`, Cordis kernel, append-only JSONL event log, Windows working-set cleanup.
+
+## Live Compilation Scenarios
+
+After the baseline design review is ingested, the live microphone or preset controls can submit one of the following architectural overrides. The system retrieves relevant modules, updates the topology, and compiles a Git patch.
+
+| Scenario | Example voice instruction | Main symbols / parameters | Expected compiled change |
+|---|---|---|---|
+| **2A — PTC Sandbox Guard** | “In PTC tool executor, cap max nested calls to 4 with a 15 second timeout.” | `PtcToolExecutor`, `maxNestedCalls=4`, `timeoutMs=15000` | Updates `tool-executor-ptc/src/config.ts` and renders a `SandboxAbortError` guard graph. |
+| **2B — Native Batch & Retry** | “In native tool executor, run execute tool batch with concurrency 8 and 3 retries.” | `NativeToolExecutor`, `executeToolBatch`, concurrency `8`, retries `3` | Updates `tool-executor-native/src/index.ts` and renders a semaphore/backoff flow. |
+| **2C — Hybrid Executor Router** | “Switch agent tool presentation to a hybrid router when batch size exceeds 2.” | `agent-tool-presentation`, `NativeToolExecutor`, `PtcToolExecutor`, threshold `2` | Updates `agent-tool-presentation/src/index.ts` and renders a dual-path decision tree. |
+
+### Voice validation behavior
+
+If a voice take is too short, noisy, or unrecognized, the backend keeps the existing repository and UI state unchanged. The studio displays a transient warning that automatically dismisses after **1.5 seconds**.
+
+## Technology Stack
+
+| Component | Technology | Purpose |
+|---|---|---|
+| Speech recognition | [Cactus Whistle](https://github.com/Cactus-Compute/whistle) | Compact speech transcription for recorded and live engineering discussions |
+| Text embeddings | [EmbeddingGemma-2](https://huggingface.co/google/embeddinggemma-2) | CPU embedding generation with 256d Matryoshka representations |
+| Vector database | [LanceDB](https://lancedb.com/) | On-disk vector storage and similarity retrieval |
+| Agent/session runtime | [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) | Cordis kernel, tools, and effect-based worker lifecycle |
+| Architecture output | Mermaid.js | Repository-grounded diagrams and topologies |
+| Runtime | Python, PyTorch CPU | Ingestion, indexing, retrieval, and compilation |
+
+## Hardware Requirements
+
+| Requirement | Recommended / supported configuration |
+|---|---|
+| Processor | CPU-only x86_64 or ARM64; no discrete GPU required |
+| Memory | 16 GB RAM developer machine |
+| Operating system | Windows 10/11, Linux, or macOS |
+| Python | 3.10–3.12 |
+| Node.js | 20+ (only needed when building the full DeepSeek Harness workspace) |
+| Package manager | `pnpm` (optional; required with the full harness workspace) |
+| Hugging Face | Account authenticated with access to `google/embeddinggemma-2` |
+
+> **Memory note:** The sub-500 MB target refers to the pruned query/compile path, not the full indexing pass. The benchmark table records indexing separately.
+
+## Installation
+
+### 1. Clone the repository
+
+```bash
+git clone https://github.com/Vishwanath-06/speak-to-repo.git
+cd speak-to-repo
 ```
 
----
+### 2. Create and activate a virtual environment
 
-## Live Compilation Scenarios (Step 2 Voice Overrides)
+**Windows PowerShell**
 
-After ingesting the baseline design review slides (**Step 1**), speaking any of the following architectural overrides into the **16 kHz Live Mic** (or triggering the presets) dynamically re-ranks the `LanceDB` modules, rewires the **Mermaid architecture diagram**, and compiles a new **Unified Git Patch (`changes.patch`)**:
-
-| Scenario | Spoken Voice Command | AST Symbols Canonicalized | Compiled Deliverables (`changes.patch` & Mermaid) |
-| :--- | :--- | :--- | :--- |
-| **2A: PTC Sandbox Guard** | *"In P T C tool executor, cap max nested calls to 4 with a 15 second timeout."* | `PtcToolExecutor`, `maxNestedCalls`, `4`, `15000ms` | Patches `tool-executor-ptc/src/config.ts` with `.max(4)` and `timeoutMs: 15000`; renders `SandboxAbortError` guard graph. |
-| **2B: Native Batch & Retry** | *"In native tool executor, run execute tool batch with concurrency 8 and 3 retries."* | `NativeToolExecutor`, `executeToolBatch`, `8`, `3` | Patches `tool-executor-native/src/index.ts` with `maxConcurrency: 8` and `retryAttempts: 3`; renders Semaphore + Backoff loop. |
-| **2C: Hybrid Executor Router** | *"Switch agent tool presentation to a hybrid router when batch size exceeds 2."* | `agent-tool-presentation`, `NativeToolExecutor`, `PtcToolExecutor`, `2` | Patches `agent-tool-presentation/src/index.ts` with `selectExecutorForTurn(threshold = 2)`; renders dual-path decision tree. |
-
-* **Transaction-Safe Voice Validation Gate:** If a spoken take is too short, noisy, or unrecognized, the backend holds the existing repository and UI state intact and displays a transient warning banner that auto-dismisses after **1.5 seconds**.
-
----
-
-## Hardware Requirements & Prerequisites
-
-* **Hardware:** Standard CPU-only laptop or desktop (x86_64 / ARM64) with **16 GB RAM** (no discrete GPU required).
-* **Operating System:** Windows 10/11 (PowerShell) or Linux/macOS.
-* **Runtime Requirements:**
-  * **Python 3.10 – 3.12**
-  * **Node.js 20+** and **pnpm** *(optional, required only if building the full `deepseek-harness` workspace)*
-  * **Hugging Face Account:** Authenticated via `hf auth login` with access to `google/embeddinggemma-2`.
-
----
-
-## Installation & Setup
-
-### 1. Clone & Initialize Python Virtual Environment (Windows PowerShell)
 ```powershell
-git clone [https://github.com/Vishwanath-06/speak-to-repo.git](https://github.com/Vishwanath-06/speak-to-repo.git)
-cd speak-to-repo
-
 python -m venv .venv
 Set-ExecutionPolicy -Scope Process -ExecutionPolicy RemoteSigned
 . .\.venv\Scripts\Activate.ps1
-
-python.exe -m pip install --upgrade pip
+python -m pip install --upgrade pip
 pip install -r requirements.txt
 ```
 
-### 2. Authenticate Hugging Face & Prepare Target Repo
-```powershell
-# Log in to pull google/embeddinggemma-2 weights
-hf auth login
+**Linux / macOS**
 
-# Clone deepseek-harness (used as the target codebase for AST biasing & indexing)
-git clone [https://github.com/deepseek-ai/deepseek-harness.git](https://github.com/deepseek-ai/deepseek-harness.git)
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install --upgrade pip
+pip install -r requirements.txt
 ```
 
-### 3. Build the Initial `256d` Matryoshka Vector Index
-```powershell
-# Generate the 2-slide multimodal engineering review pack (whiteboard keyframes + 16kHz audio)
-python scripts/generate_design_meeting.py
+### 3. Authenticate with Hugging Face
 
-# Phase 1: Run AST-Biased Whistle Ingestion
+Authenticate so the indexer can download the EmbeddingGemma-2 model weights:
+
+```bash
+hf auth login
+```
+
+### 4. Clone the target repository
+
+The following example uses DeepSeek Harness as the repository to inspect and index:
+
+```bash
+git clone https://github.com/deepseek-ai/deepseek-harness.git
+```
+
+The commands below assume the target source directory is `./deepseek-harness/packages/core`.
+
+## Getting Started
+
+### 1. Generate the sample design-review media
+
+```bash
+python scripts/generate_design_meeting.py
+```
+
+### 2. Run AST-biased speech ingestion
+
+**Windows PowerShell**
+
+```powershell
 python workers/whistle_ingest.py `
   --media storage/demo_media/slide_1.wav `
   --repo ./deepseek-harness/packages/core `
   --out storage/transcripts/test_run.jsonl
+```
 
-# Phase 2: Index repository source modules + transcripts into LanceDB (256d MRL)
+### 3. Build the 256-dimensional vector index
+
+```powershell
 python workers/gemma_indexer.py index `
   --repo ./deepseek-harness/packages/core `
   --transcript storage/transcripts/test_run.jsonl `
@@ -116,20 +212,25 @@ python workers/gemma_indexer.py index `
   --dim 256
 ```
 
----
+## Running the Demo Studio
 
-## Running the Live Demo Studio, CLI Compiler & Tests
+Start the local interactive studio:
 
-### 1. Launch the Interactive Web Studio (`http://127.0.0.1:8080`)
-```powershell
+```bash
 python scripts/demo_studio.py
 ```
-* Open **`http://127.0.0.1:8080`** in your browser.
-* Click **`🎬 1. Ingest Slides (.mp4)`** to load the whiteboard keyframes and baseline architecture.
-* Click **`🎙️ 2. Live Mic Override`** (or **`⚡ 2A` / `⚡ 2B` / `⚡ 2C`**) to compile new Mermaid topologies, Git diffs, and ADRs in real time.
-* Click **`GC`** in the top-right memory bar to trigger `SetProcessWorkingSetSize` and watch idle RAM drop below `100 MB`.
 
-### 2. Run Event-Sourced CLI Session Forking
+Open **http://127.0.0.1:8080** in your browser.
+
+1. Select **Ingest Slides** to load the review media and baseline architecture.
+2. Select **Live Mic Override** or one of the `2A`, `2B`, or `2C` presets.
+3. Review the generated Mermaid topology, Git diff, and ADR output.
+4. Use the **GC** control in the memory bar to trigger the working-set cleanup path on supported Windows environments.
+
+## CLI Session Forking
+
+The event-sourced CLI runner can fork a prior session with a new goal and target repository:
+
 ```powershell
 python scripts/cordis_session_runner.py `
   --fork-session sess_initial `
@@ -138,61 +239,98 @@ python scripts/cordis_session_runner.py `
   --out-doc storage/compiled_docs/ptc_sandbox_spec.md
 ```
 
-### 3. Run the Automated Unit Test Suite & Hardware Benchmarks
-```powershell
-# Run fast unit tests (<2 seconds on CPU)
-python -m unittest discover -s tests -v
+## Tests and Benchmarks
 
-# Run full MRL dimension sweep (128d-768d) & Whistle ablation benchmark
+Run the unit test suite:
+
+```bash
+python -m unittest discover -s tests -v
+```
+
+Run the benchmark suite, including the MRL dimension sweep and Whistle ablation benchmark:
+
+```bash
 python scripts/benchmark_suite.py
 ```
 
----
+## Benchmarks
 
-## Measured CPU Hardware Benchmarks
+The following measurements are from the documented **16 GB RAM Windows x64** host using Python 3.12, CPU-only PyTorch, and bfloat16. Treat them as measurements from that environment, not universal performance guarantees.
 
-Measured on a 16 GB RAM Windows x64 CPU host (`Python 3.12`, `torch 2.15.0+cpu`, `bfloat16`):
+### Runtime and memory measurements
 
-### 1. Cordis Subprocess Memory Lifecycle
-| Pipeline Stage | Active Subsystem | Peak Worker RSS (MB) | Post-Task Retained RAM | Throughput / Latency |
-| :--- | :--- | :--- | :--- | :--- |
-| **Phase 1: Acoustic Ingest** | `Cactus-Compute/whistle` (`16.9 MB` `.cact`) | **`98.43 MB`** | `0 MB` (`ctx.effect` reaped) | **`277.4 tok/s`** (`482.6 ms` TTFT) |
-| **Phase 2: Batch Indexing** | `EmbeddingGemma-2` + `LanceDB` Write | **`1,269.60 MB`** | `0 MB` (`ctx.effect` reaped) | `61` cross-modal chunks indexed |
-| **Phase 3: Pruned Query & Compile** | `EmbeddingGemma-2` (Vision/Audio Pruned) | **`491.35 MB`** *(60.1% reduction)* | `0 MB` (`ctx.effect` reaped) | **`237.27 ms`** query + **`2 ms`** compile |
-| **Phase 4: Forked Session Compile** | `cordis_session_runner.py --fork-session` | **`494.64 MB`** | `0 MB` (`ctx.effect` reaped) | **`12.76 s`** total *(47x faster than cold index)* |
+| Pipeline stage | Active subsystem | Peak worker RSS | Throughput / latency | Notes |
+|---|---|---:|---|---|
+| Phase 1 — Acoustic ingest | Cactus Whistle (`16.9 MB` model file) | **98.43 MB** | **277.4 tok/s**, `482.6 ms` TTFT | Worker memory reclaimed after task |
+| Phase 2 — Batch indexing | EmbeddingGemma-2 + LanceDB write | **1,269.60 MB** | `61` cross-modal chunks indexed | Higher-memory offline indexing stage |
+| Phase 3 — Pruned query and compile | EmbeddingGemma-2 with vision/audio towers pruned | **491.35 MB** | `237.27 ms` query + `2 ms` compile | `60.1%` reduction reported for the pruned path |
+| Phase 4 — Forked session compile | `cordis_session_runner.py --fork-session` | **494.64 MB** | `12.76 s` total | Reported as `47×` faster than a cold index in this benchmark |
 
-### 2. Matryoshka Representation Learning (MRL) Dimension Sweep (`EmbeddingGemma-2`)
-| Vector Dim | Float32 Bytes/Vec | Storage Savings | Recall@5 (vs `768d`) | Mean Top-1 Cosine | Matrix Search Latency (CPU) |
-| :--- | :--- | :--- | :--- | :--- | :--- |
-| **`128d`** | `512 B` | **`6.0x`** | `45.0%` | `0.8202` | **`107.27 µs`** |
-| **`256d`** *(Default)* | `1024 B` | **`3.0x`** | `70.0%` *(100% Top-1 Hit)* | `0.7320` | `153.75 µs` |
-| **`512d`** | `2048 B` | **`1.5x`** | **`85.0%`** | `0.7122` | `125.43 µs` |
-| **`768d`** | `3072 B` | `1.0x` | **`100.0%`** | `0.7122` | `136.85 µs` |
+### Embedding dimension sweep
 
----
+| Vector dimension | Float32 storage / vector | Storage savings vs. 768d | Recall@5 vs. 768d | Mean top-1 cosine | CPU matrix-search latency |
+|---:|---:|---:|---:|---:|---:|
+| `128d` | `512 B` | `6.0×` | `45.0%` | `0.8202` | `107.27 µs` |
+| **`256d` (default)** | `1,024 B` | **`3.0×`** | `70.0%` | `0.7320` | `153.75 µs` |
+| `512d` | `2,048 B` | `1.5×` | `85.0%` | `0.7122` | `125.43 µs` |
+| `768d` | `3,072 B` | `1.0×` | `100.0%` | `0.7122` | `136.85 µs` |
+
+The 256d configuration is the default because it reduces vector storage by **3×** relative to 768d while retaining the reported **70% Recall@5** in this sweep.
 
 ## Repository Structure
 
 ```text
 speak-to-repo/
-├── requirements.txt              # CPU-pinned Python dependencies
-├── README.md                     # Architecture, setup, and benchmark documentation
+├── .github/
+│   └── workflows/                  # GitHub Actions workflows
 ├── workers/
-│   ├── ast_extractor.py          # Top-down os.walk AST harvester & import symbol scraper
-│   ├── whistle_ingest.py         # Cactus Whistle (16.9MB) 30s windowed transcriber
-│   ├── gemma_indexer.py          # Selective-load EmbeddingGemma-2 (tower pruning + 256d MRL)
-│   └── repo_compiler.py          # CLI Markdown, Mermaid, and acoustic citation compiler
+│   ├── ast_extractor.py             # AST harvester and import-symbol scraper
+│   ├── whistle_ingest.py            # Cactus Whistle windowed transcription
+│   ├── gemma_indexer.py             # EmbeddingGemma-2 indexing and 256d MRL
+│   └── repo_compiler.py             # Markdown, Mermaid, and citation compiler
 ├── scripts/
-│   ├── demo_studio.py            # Live WebAudio 16kHz Mic + Mermaid + Git Diff Studio (v5)
-│   ├── generate_design_meeting.py# Pure-Python 2-slide whiteboard + 16kHz WAV generator
-│   ├── cordis_session_runner.py  # Append-only JSONL event log runner with --fork-session
-│   └── benchmark_suite.py        # MRL dimension sweep & Whistle ablation suite
+│   ├── demo_studio.py               # Live microphone, Mermaid, and Git diff studio
+│   ├── generate_design_meeting.py   # Sample slide and audio generation
+│   ├── cordis_session_runner.py     # Append-only session log and session forking
+│   └── benchmark_suite.py           # MRL sweep and Whistle ablation benchmarks
 ├── cordis-plugin/
-│   └── src/speak-ingest.ts       # DeepSeek Harness Cordis plugin (ctx.tools + ctx.effect)
+│   └── src/speak-ingest.ts          # Cordis plugin integration
 ├── tests/
-│   └── test_speak_to_repo.py     # Unit tests for AST, voice gate, Mermaid safety & Git diffs
-└── storage/
-    ├── compiled_docs/            # Generated ADR-compiled.md & changes.patch artifacts
-    ├── sessions/                 # Append-only session_events.jsonl trajectory logs
-    └── BENCHMARK_RESULTS.md      # Reproducible hardware telemetry report
+│   └── test_speak_to_repo.py        # AST, voice gate, Mermaid, and Git diff tests
+├── storage/
+│   ├── compiled_docs/               # Generated ADRs and patches
+│   ├── sessions/                    # session_events.jsonl trajectories
+│   └── BENCHMARK_RESULTS.md         # Benchmark telemetry
+├── requirements.txt
+└── README.md
 ```
+
+## Design Notes
+
+- **Sequential modality swap:** Speech, embedding, and compilation workloads are staged rather than kept resident together.
+- **AST-biased transcription:** Repository identifiers are used to improve recognition of technical symbols and names.
+- **Retrieval-grounded compilation:** Generated outputs are linked to retrieved repository context rather than being based only on the spoken instruction.
+- **Transaction-safe validation:** An unclear voice command does not replace the current repository/UI state.
+- **Event-sourced sessions:** Session events are appended to JSONL so work can be inspected and forked.
+
+## Limitations and Notes
+
+- The documented measurements are hardware- and workload-dependent.
+- Initial indexing has a higher memory footprint than the pruned query path.
+- The Hugging Face model weights must be available to the authenticated account.
+- The full DeepSeek Harness workspace requires the optional Node.js and `pnpm` toolchain.
+- The demo URL is intentionally left as a placeholder until a hosted recording or deployment is available.
+
+## Contributing
+
+Contributions, bug reports, and suggestions are welcome. For substantial changes, open an issue first to discuss the proposed update. When submitting a pull request, include the motivation, the affected pipeline phase, and relevant test or benchmark output.
+
+## License
+
+No license is specified in the repository information used for this README. Add a `LICENSE` file before granting permissions for reuse or redistribution.
+
+---
+
+<p align="center">
+  Built for CPU-native, repository-grounded engineering workflows.
+</p>
