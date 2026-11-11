@@ -1,0 +1,3 @@
+﻿- insert:
+    - id: speak-to-repo-compiler
+      name: './src/speak-ingest.ts'

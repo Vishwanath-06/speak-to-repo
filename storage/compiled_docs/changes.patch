@@ -1,0 +1,19 @@
+diff --git a/packages/core/agent-tool-presentation/src/index.ts b/packages/core/agent-tool-presentation/src/index.ts
+index 84a1b2c..e19f70a 100644
+--- a/packages/core/agent-tool-presentation/src/index.ts
++++ b/packages/core/agent-tool-presentation/src/index.ts
+@@ -6,9 +6,18 @@ import type { Context } from '@deepseek-ai/cordis'
+ import z from '@deepseek-ai/schemastery'
+ import * as NativeToolExecutor from '@deepseek-ai/dsh-tool-executor-native'
+ import * as PtcToolExecutor from '@deepseek-ai/dsh-tool-executor-ptc'
+ 
+-/** @deprecated Mount NativeToolExecutor or PtcToolExecutor directly. */
++/** Hybrid Dual-Path Router compiled by Speak-to-Repo */
++export const HYBRID_BATCH_THRESHOLD = 2
++
++export function selectExecutorForTurn(toolCallCount: number) {
++  if (toolCallCount <= 2) {
++    return NativeToolExecutor
++  }
++  return PtcToolExecutor
++}

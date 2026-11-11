@@ -1,6 +1,6 @@
-{
+﻿{
   "total_duration_sec": 21.27,
-  "master_wav": "V:\\Projects\\speak-to-repo\\storage\\keyframes\\track_16k.wav",
+  "master_wav": "storage\\keyframes\\track_16k.wav",
   "slides": [
     {
       "slide_index": 1,
@@ -8,9 +8,9 @@
       "title": "SLIDE 1 // BOTTLENECK: NATIVE TOOL EXECUTOR",
       "start_sec": 0.0,
       "end_sec": 10.79,
-      "image_path": "V:\\Projects\\speak-to-repo\\storage\\demo_media\\slide_1.jpg",
-      "keyframe_path": "V:\\Projects\\speak-to-repo\\storage\\keyframes\\frame_0001.jpg",
-      "wav_path": "V:\\Projects\\speak-to-repo\\storage\\demo_media\\slide_1.wav"
+      "image_path": "storage\\demo_media\\slide_1.jpg",
+      "keyframe_path": "storage\\keyframes\\frame_0001.jpg",
+      "wav_path": "storage\\demo_media\\slide_1.wav"
     },
     {
       "slide_index": 2,
@@ -18,9 +18,9 @@
       "title": "SLIDE 2 // TARGET: PTC PROGRAMMATIC SANDBOX",
       "start_sec": 10.79,
       "end_sec": 21.27,
-      "image_path": "V:\\Projects\\speak-to-repo\\storage\\demo_media\\slide_2.jpg",
-      "keyframe_path": "V:\\Projects\\speak-to-repo\\storage\\keyframes\\frame_0002.jpg",
-      "wav_path": "V:\\Projects\\speak-to-repo\\storage\\demo_media\\slide_2.wav"
+      "image_path": "storage\\demo_media\\slide_2.jpg",
+      "keyframe_path": "storage\\keyframes\\frame_0002.jpg",
+      "wav_path": "storage\\demo_media\\slide_2.wav"
     }
   ]
 }
