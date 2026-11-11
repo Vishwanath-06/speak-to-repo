@@ -1,0 +1,29 @@
+# --- Core CPU Speech & Multimodal Embedding Engines ---
+cactus-compute>=4.1.0
+cactus-engine>=2.2.2
+torch>=2.14.0
+torchvision>=0.23.0
+transformers>=5.0.0
+sentence-transformers>=6.0.0
+huggingface-hub>=1.31.0
+
+# --- On-Disk Vector Store & Schema ---
+lancedb>=0.40.0
+pyarrow>=26.0.0
+
+# --- AST Parsing & Code Analysis ---
+tree-sitter>=0.26.0
+tree-sitter-python>=0.25.0
+tree-sitter-typescript>=0.23.0
+
+# --- Audio, Keyframe Image Processing & OS Telemetry ---
+soundfile>=0.14.0
+numpy>=2.0.0
+Pillow>=11.0.0
+psutil>=7.0.0
+
+# --- Live Demo Studio HUD & CLI Formatting ---
+fastapi>=0.100.0
+uvicorn>=0.20.0
+python-multipart>=0.0.5
+rich>=13.8.0

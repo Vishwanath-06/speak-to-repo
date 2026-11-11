@@ -1,0 +1,22 @@
+# 1. Copy your Cordis plugin into a tracked top-level directory so it pushes cleanly to GitHub
+New-Item -ItemType Directory -Force -Path "cordis-plugin/src" | Out-Null
+Copy-Item "deepseek-harness/scratch-plugin/src/speak-ingest.ts" "cordis-plugin/src/speak-ingest.ts" -Force
+if (Test-Path "deepseek-harness/scratch-plugin/cordis.yml") {
+    Copy-Item "deepseek-harness/scratch-plugin/cordis.yml" "cordis-plugin/cordis.yml" -Force
+}
+
+# 2. Write a clean .gitignore (excludes .venv, the 350MB deepseek-harness checkout, and heavy binary DB files, while keeping your compiled docs, session logs, and benchmark report!)
+@"
+.venv/
+__pycache__/
+*.pyc
+deepseek-harness/
+storage/lancedb/
+storage/*.wav
+storage/*.mp4
+storage/keyframes/*.jpg
+"@ | Set-Content -Path ".gitignore" -Encoding UTF8
+
+# 3. Initialize Git and verify only clean source, scripts, and benchmark artifacts are staged
+git init
+git status

@@ -1,0 +1,20 @@
+diff --git a/packages/core/tool-executor-ptc/src/config.ts b/packages/core/tool-executor-ptc/src/config.ts
+index 31c90a1..90f2c4d 100644
+--- a/packages/core/tool-executor-ptc/src/config.ts
++++ b/packages/core/tool-executor-ptc/src/config.ts
+@@ -1,8 +1,14 @@
+ import z from '@deepseek-ai/schemastery'
+ 
+ export interface PtcExecutorConfig {
+-  maxNestedCalls?: number
++  maxNestedCalls: number // Compiled from voice: 15
++  timeoutMs: number      // Compiled from voice: 15000ms
++  strictSandboxGuard: boolean
+ }
+ 
+ export const PtcExecutorConfig: z<PtcExecutorConfig> = z.object({
+-  maxNestedCalls: z.natural().default(10),
++  maxNestedCalls: z.natural().max(15).default(15),
++  timeoutMs: z.natural().default(15000),
++  strictSandboxGuard: z.boolean().default(true),
+ })
